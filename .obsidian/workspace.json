@@ -4,17 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "2ab812d3d9ff2866",
+        "id": "f88ea4725fff4650",
         "type": "tabs",
         "children": [
           {
-            "id": "bcee8a3d8e928fec",
+            "id": "23a6562d8da7dc6d",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "01_Facultad/3ro/IC 321 - EA/Electrónica Analógica.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "Nueva pestaña"
+              "title": "Electrónica Analógica"
             }
           }
         ]
@@ -49,7 +53,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "Facultad",
+                "query": "tag:importante",
                 "matchingCase": true,
                 "explainSearch": true,
                 "collapseAll": true,
@@ -67,11 +71,10 @@
               "type": "bookmarks",
               "state": {},
               "icon": "lucide-bookmark",
-              "title": "Bookmarks"
+              "title": "Marcadores"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "horizontal",
@@ -162,8 +165,21 @@
       "bases:Crear nueva base": false
     }
   },
-  "active": "bcee8a3d8e928fec",
+  "active": "23a6562d8da7dc6d",
   "lastOpenFiles": [
+    "01_Facultad/3ro/IC 321 - EA/UNIDAD 1 - Circuitos con diodos.md",
+    "01_Facultad/3ro/IC 321 - EA/Electrónica Analógica.md",
+    "01_Facultad/3ro/IC 321 - EA/UNIDAD 4 - Circuitos integrados analógicos y sus aplicaciones.md",
+    "01_Facultad/3ro/IC 321 - EA/UNIDAD 5 - Fuentes de alimentación de corriente continua lineales y conmutadas.md",
+    "UNIDAD 5 - Fuentes de alimentación de corriente continua lineales y conmutadas.md",
+    "01_Facultad/3ro/IC 321 - EA/UNIDAD 2 - Circuitos con transistores bipolares y unipolares.md",
+    "0002-01-01.md",
+    "Attachments",
+    "2026-07-21.md",
+    "01_Facultad/3ro/IC 321 - EA",
+    "01_Facultad/3ro",
+    "01_Facultad",
+    "01_Facultad/3ro/IC 321 - EA/UNIDAD 3 - Circuitos con amplificadores operacionales.md",
     "Facultad/Electrónica Analógica.md",
     "3ro.md",
     "Facultad - unam.md",
@@ -181,16 +197,7 @@
     "5to.md",
     "Docker.md",
     "Estructura Docker en un ejemplo.md",
-    "Programación.md",
-    "Lago de Conocimiento de Fabricio.md",
-    "4to.md",
-    "Ingeniería de Software II.md",
-    "Ingeniería de Software.md",
-    "TO DO LIST semana 01 - 07 de MAYO.md",
     "Sin título.canvas",
-    "2026-06-25.md",
-    "TP N°2 - Análisis de Mercado.md",
-    "Sin título.md",
     "Pasted image 20260422155124.png",
     "Untitled.canvas",
     "drones_v2 (1).pdf",
@@ -208,10 +215,6 @@
     "Pasted image 20240408204723.png",
     "imagenes/pasivo- pasa alto.jpeg.crdownload",
     "imagenes/pasivo- pasa bajo.jpeg.crdownload",
-    "imagenes/7-14-sadada.jpeg.crdownload",
-    "imagenes/RA1 - Lab1.pdf",
-    "imagenes/RA1 - Lab1.pdf.crdownload",
-    "imagenes/10-3.jpeg.crdownload",
     "Facultad/FINAL ELECTRONICA ANALOGICA.canvas"
   ]
 }
