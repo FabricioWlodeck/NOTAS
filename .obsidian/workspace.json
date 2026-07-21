@@ -1,0 +1,217 @@
+{
+  "main": {
+    "id": "93608941b5117151",
+    "type": "split",
+    "children": [
+      {
+        "id": "2ab812d3d9ff2866",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "bcee8a3d8e928fec",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "Nueva pestaña"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "826515901e788b6e",
+    "type": "split",
+    "children": [
+      {
+        "id": "3ddef634120be169",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "bbdd6805d7453032",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Explorador de archivos"
+            }
+          },
+          {
+            "id": "fafadb9b0370370a",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "Facultad",
+                "matchingCase": true,
+                "explainSearch": true,
+                "collapseAll": true,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Buscar"
+            }
+          },
+          {
+            "id": "b67c121d444352c8",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ],
+        "currentTab": 1
+      }
+    ],
+    "direction": "horizontal",
+    "width": 337.5
+  },
+  "right": {
+    "id": "82ce6dbe2afadf6a",
+    "type": "split",
+    "children": [
+      {
+        "id": "f5cc96b8b8c0b43c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b553ccf128784ec5",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "4to.md",
+                "collapseAll": false,
+                "extraContext": true,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Enlaces entrantes de 4to"
+            }
+          },
+          {
+            "id": "9f8d5b221a878292",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Monitoreo y Relevamiento de la Selva Atlántica Misionera Utilizando Tecnologías de Sensado Remoto.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from Monitoreo y Relevamiento de la Selva Atlántica Misionera Utilizando Tecnologías de Sensado Remoto"
+            }
+          },
+          {
+            "id": "4d6d7a96e7fdb6b0",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "0facf2453f1beac6",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Monitoreo y Relevamiento de la Selva Atlántica Misionera Utilizando Tecnologías de Sensado Remoto.md"
+              },
+              "icon": "lucide-list",
+              "title": "Outline of Monitoreo y Relevamiento de la Selva Atlántica Misionera Utilizando Tecnologías de Sensado Remoto"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Abrir selector rápido": false,
+      "graph:Abrir vista gráfica": false,
+      "canvas:Crear nuevo lienzo": false,
+      "daily-notes:Abrir la nota de hoy": false,
+      "templates:Insertar plantilla": false,
+      "command-palette:Abrir paleta de comandos": false,
+      "publish:Publicar cambios...": false,
+      "bases:Crear nueva base": false
+    }
+  },
+  "active": "bcee8a3d8e928fec",
+  "lastOpenFiles": [
+    "Facultad/Electrónica Analógica.md",
+    "3ro.md",
+    "Facultad - unam.md",
+    "programming road/Puppeteer.md",
+    "2da clase.md",
+    "programming road/Protocolo cliente-servidor.md",
+    "programming road/NodeJS.md",
+    "programming road/MERN.md",
+    "programming road/Express.md",
+    "programming road/Developer Roadmaps.md",
+    "programming road/Desarrollo Web.md",
+    "programming road/Análisis de datos.md",
+    "Async/await vs Callbacks.md",
+    "IC 515 - Gestión de Proyecto.md",
+    "5to.md",
+    "Docker.md",
+    "Estructura Docker en un ejemplo.md",
+    "Programación.md",
+    "Lago de Conocimiento de Fabricio.md",
+    "4to.md",
+    "Ingeniería de Software II.md",
+    "Ingeniería de Software.md",
+    "TO DO LIST semana 01 - 07 de MAYO.md",
+    "Sin título.canvas",
+    "2026-06-25.md",
+    "TP N°2 - Análisis de Mercado.md",
+    "Sin título.md",
+    "Pasted image 20260422155124.png",
+    "Untitled.canvas",
+    "drones_v2 (1).pdf",
+    "Async",
+    "Pasted image 20240916092315.png",
+    "Pasted image 20240916092313.png",
+    "Pasted image 20240207172944.png",
+    "Pasted image 20240204202307.png",
+    "Untitled",
+    "imagenes/17-4.jpeg",
+    "imagenes/Funcion transferencia Filtro activo con RC pasa bajo.jpeg",
+    "imagenes/Funcion transferencia Filtro activo con RC pasa alto.jpeg",
+    "imagenes/dumping factor.jpeg",
+    "imagenes/dumping factor.jpeg.crdownload",
+    "Pasted image 20240408204723.png",
+    "imagenes/pasivo- pasa alto.jpeg.crdownload",
+    "imagenes/pasivo- pasa bajo.jpeg.crdownload",
+    "imagenes/7-14-sadada.jpeg.crdownload",
+    "imagenes/RA1 - Lab1.pdf",
+    "imagenes/RA1 - Lab1.pdf.crdownload",
+    "imagenes/10-3.jpeg.crdownload",
+    "Facultad/FINAL ELECTRONICA ANALOGICA.canvas"
+  ]
+}
