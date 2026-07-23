@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cargador de Batería (Media Onda)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; margin: 0; padding: 1rem; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        #sim-container { background-color: #1e293b; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); width: 100%; max-width: 900px; }
+        canvas { background-color: #000; border-radius: 0.5rem; border: 1px solid #334155; width: 100%; height: auto; aspect-ratio: 2/1; display: block; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 600; }
+        .legend-color { width: 16px; height: 16px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div id="sim-container" class="flex flex-col gap-4">
+    <div class="text-center">
+        <h1 class="text-2xl font-bold text-sky-400">Análisis: Cargador de Batería con Diodo</h1>
+        <p class="text-slate-400 mt-1 text-sm">Observá cómo la corriente ($i_O$) solo fluye cuando la fuente supera a la batería.</p>
+    </div>
+
+    <!-- Layout para Circuito y Gráfico -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 w-full">
+        <!-- Canvas Circuito -->
+        <div class="bg-slate-950 border border-slate-700 rounded-lg p-3 flex flex-col items-center relative">
+            <h3 class="text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider absolute top-3 left-3">1. Circuito</h3>
+            <canvas id="circuitCanvas" class="w-full mt-6" style="aspect-ratio: 4/3;"></canvas>
+        </div>
+        
+        <!-- Canvas Gráfico -->
+        <div class="lg:col-span-2 bg-slate-950 border border-slate-700 rounded-lg p-3 flex flex-col items-center relative">
+            <h3 class="text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider absolute top-3 left-3">2. Osciloscopio (V e I vs t)</h3>
+            <canvas id="chargerCanvas" class="w-full mt-6" style="aspect-ratio: 2/1;"></canvas>
+        </div>
+    </div>
+
+    <!-- Legend and Live Data -->
+    <div class="flex flex-wrap justify-center gap-6 mt-2 bg-slate-800/80 p-3 rounded-lg border border-slate-700">
+        <div class="legend-item text-slate-300"><div class="legend-color bg-red-500"></div> Voltaje Fuente ($V_S$)</div>
+        <div class="legend-item text-slate-300"><div class="legend-color bg-green-500"></div> Batería ($E$)</div>
+        <div class="legend-item text-slate-300"><div class="legend-color bg-blue-500"></div> Corriente Carga ($i_O$)</div>
+    </div>
+
+    <!-- Controls -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4 bg-slate-900 rounded-lg border border-slate-700">
+        <div>
+            <label class="block text-sm font-semibold text-red-400 mb-2">Voltaje Pico Fuente ($V_m$): <span id="val-Vm" class="text-white">20 V</span></label>
+            <input type="range" id="slider-Vm" min="10" max="25" step="1" value="20" class="w-full accent-red-500" oninput="draw()">
+            <p class="text-xs text-slate-500 mt-1">Amplitud de la onda de alterna.</p>
+        </div>
+        <div>
+            <label class="block text-sm font-semibold text-green-400 mb-2">Voltaje de la Batería (E): <span id="val-E" class="text-white">6 V</span></label>
+            <input type="range" id="slider-E" min="0" max="15" step="0.5" value="6" class="w-full accent-green-500" oninput="draw()">
+            <p class="text-xs text-slate-500 mt-1">A mayor voltaje de batería, más le cuesta a la fuente empujar corriente.</p>
+        </div>
+        <div>
+            <label class="block text-sm font-semibold text-slate-300 mb-2">Resistencia Limitadora (R): <span id="val-R" class="text-white">1 Ω</span></label>
+            <input type="range" id="slider-R" min="0.5" max="5" step="0.1" value="1" class="w-full accent-blue-500" oninput="draw()">
+            <p class="text-xs text-slate-500 mt-1">Controla la amplitud del pico de corriente.</p>
+        </div>
+        <div class="flex flex-col justify-center border-t md:border-t-0 md:border-l border-slate-700 pt-4 md:pt-0 md:pl-4">
+            <label class="block text-sm font-semibold text-slate-300 mb-3">Modelo del Diodo:</label>
+            <label class="flex items-center gap-2 cursor-pointer text-sm text-sky-400 hover:text-sky-300 transition-colors">
+                <input type="checkbox" id="cb-ideal" class="w-5 h-5 accent-sky-500 rounded focus:ring-sky-500 focus:ring-offset-slate-900" onchange="draw()">
+                <span class="font-bold">Diodo Ideal</span> (Despreciar 0.7V)
+            </label>
+        </div>
+    </div>
+
+    <!-- Dynamic PIV Info -->
+    <div class="bg-red-950/50 border border-red-800 p-4 rounded-lg text-center">
+        <div class="text-sm text-red-200">Voltaje de Pico Inverso (PIV) que soporta el diodo bloqueado:</div>
+        <div class="text-2xl font-bold text-red-400 mt-1 font-mono">V_dPI = V_m + E = <span id="val-piv">26.0 V</span></div>
+    </div>
+</div>
+
+<script>
+    const canvasGraph = document.getElementById('chargerCanvas');
+    const ctxGraph = canvasGraph.getContext('2d');
+    
+    const canvasCircuit = document.getElementById('circuitCanvas');
+    const ctxCircuit = canvasCircuit.getContext('2d');
+    
+    const Freq = 50; // Hz
+    const PeriodMs = 1000 / Freq; // 20ms
+    
+    function resize() {
+        const dpr = window.devicePixelRatio || 1;
+        
+        const rectGraph = canvasGraph.parentElement.getBoundingClientRect();
+        canvasGraph.width = (rectGraph.width - 24) * dpr; // padding account
+        canvasGraph.height = (rectGraph.width * 0.5) * dpr;
+        ctxGraph.scale(dpr, dpr);
+        
+        const rectCirc = canvasCircuit.parentElement.getBoundingClientRect();
+        canvasCircuit.width = (rectCirc.width - 24) * dpr;
+        canvasCircuit.height = (rectCirc.width * 0.75) * dpr;
+        ctxCircuit.scale(dpr, dpr);
+        
+        draw();
+    }
+    window.addEventListener('resize', resize);
+
+    function drawCircuitContext(E, R, V_m, V_diodo) {
+        const w = canvasCircuit.width / (window.devicePixelRatio || 1);
+        const h = canvasCircuit.height / (window.devicePixelRatio || 1);
+        ctxCircuit.clearRect(0, 0, w, h);
+        
+        const cx = w / 2;
+        const cy = h / 2;
+        const boxW = w * 0.55; // Hacemos la caja más chica para que los textos entren cómodos
+        const boxH = h * 0.5;
+        const left = cx - boxW/2;
+        const right = cx + boxW/2;
+        const top = cy - boxH/2;
+        const bottom = cy + boxH/2;
+
+        ctxCircuit.strokeStyle = '#94a3b8'; ctxCircuit.lineWidth = 2;
+
+        // Wires
+        ctxCircuit.beginPath();
+        ctxCircuit.moveTo(left, top); ctxCircuit.lineTo(right, top); // Top wire
+        ctxCircuit.moveTo(left, bottom); ctxCircuit.lineTo(right, bottom); // Bottom wire
+        ctxCircuit.moveTo(left, top); ctxCircuit.lineTo(left, bottom); // Left wire
+        ctxCircuit.moveTo(right, top); ctxCircuit.lineTo(right, bottom); // Right wire
+        ctxCircuit.stroke();
+
+        // AC Source (Left)
+        ctxCircuit.fillStyle = '#020617'; ctxCircuit.beginPath(); ctxCircuit.arc(left, cy, 18, 0, Math.PI*2); ctxCircuit.fill(); ctxCircuit.stroke();
+        ctxCircuit.beginPath(); ctxCircuit.moveTo(left - 10, cy); ctxCircuit.quadraticCurveTo(left - 5, cy - 10, left, cy); ctxCircuit.quadraticCurveTo(left + 5, cy + 10, left + 10, cy); ctxCircuit.stroke();
+        ctxCircuit.fillStyle = '#ef4444'; ctxCircuit.font = 'bold 12px Inter'; ctxCircuit.fillText(`V_S (${V_m}V)`, left - 55, cy + 4);
+
+        // Resistor (Top Left)
+        ctxCircuit.fillStyle = '#020617'; ctxCircuit.fillRect(left + boxW*0.2 - 5, top - 15, boxW*0.2 + 10, 30);
+        ctxCircuit.beginPath();
+        let rx = left + boxW*0.2;
+        ctxCircuit.moveTo(rx, top);
+        for(let i=0; i<3; i++) {
+            ctxCircuit.lineTo(rx + 5, top - 8); ctxCircuit.lineTo(rx + 15, top + 8); rx += 10;
+        }
+        ctxCircuit.lineTo(rx + 5, top);
+        ctxCircuit.stroke();
+        ctxCircuit.fillStyle = '#94a3b8'; ctxCircuit.fillText(`R (${R}Ω)`, left + boxW*0.2, top - 22);
+
+        // Diode (Top Right)
+        const dx = left + boxW*0.8;
+        ctxCircuit.fillStyle = '#020617'; ctxCircuit.fillRect(dx - 15, top - 15, 30, 30);
+        ctxCircuit.beginPath(); ctxCircuit.moveTo(dx - 10, top - 10); ctxCircuit.lineTo(dx + 10, top); ctxCircuit.lineTo(dx - 10, top + 10); ctxCircuit.closePath(); ctxCircuit.stroke();
+        ctxCircuit.beginPath(); ctxCircuit.moveTo(dx + 10, top - 10); ctxCircuit.lineTo(dx + 10, top + 10); ctxCircuit.stroke();
+        ctxCircuit.fillStyle = '#94a3b8'; 
+        const diodeLabel = V_diodo === 0 ? 'D1 (Ideal)' : 'D1 (0.7V)';
+        ctxCircuit.fillText(diodeLabel, dx - 20, top - 22);
+
+        // Battery (Right)
+        ctxCircuit.fillStyle = '#020617'; ctxCircuit.fillRect(right - 20, cy - 15, 40, 30);
+        ctxCircuit.beginPath(); 
+        ctxCircuit.moveTo(right - 15, cy - 5); ctxCircuit.lineTo(right + 15, cy - 5); // Long (Positive)
+        ctxCircuit.moveTo(right - 8, cy + 5); ctxCircuit.lineTo(right + 8, cy + 5);   // Short (Negative)
+        ctxCircuit.stroke();
+        ctxCircuit.fillStyle = '#22c55e'; ctxCircuit.fillText(`E (${E}V)`, right + 25, cy + 4);
+        ctxCircuit.font = '10px Inter'; ctxCircuit.fillText('+', right + 25, cy - 10);
+        ctxCircuit.fillText('-', right + 25, cy + 18);
+
+        // Ground
+        ctxCircuit.beginPath(); ctxCircuit.moveTo(cx, bottom); ctxCircuit.lineTo(cx, bottom + 15); ctxCircuit.stroke();
+        ctxCircuit.beginPath(); ctxCircuit.moveTo(cx - 12, bottom + 15); ctxCircuit.lineTo(cx + 12, bottom + 15); ctxCircuit.stroke();
+        ctxCircuit.beginPath(); ctxCircuit.moveTo(cx - 6, bottom + 20); ctxCircuit.lineTo(cx + 6, bottom + 20); ctxCircuit.stroke();
+        ctxCircuit.fillStyle = '#3b82f6'; ctxCircuit.fillText('0V', cx + 18, bottom + 20);
+
+        // Current Arrow
+        ctxCircuit.strokeStyle = '#3b82f6'; ctxCircuit.fillStyle = '#3b82f6'; ctxCircuit.lineWidth = 2;
+        ctxCircuit.beginPath(); ctxCircuit.moveTo(cx - 20, top + 15); ctxCircuit.lineTo(cx + 20, top + 15); ctxCircuit.stroke();
+        ctxCircuit.beginPath(); ctxCircuit.moveTo(cx + 15, top + 10); ctxCircuit.lineTo(cx + 25, top + 15); ctxCircuit.lineTo(cx + 15, top + 20); ctxCircuit.fill();
+        ctxCircuit.font = 'bold 13px Inter'; ctxCircuit.fillText('i_O', cx - 5, top + 35);
+    }
+
+    function draw() {
+        // Read Inputs
+        const E = parseFloat(document.getElementById('slider-E').value);
+        const R = parseFloat(document.getElementById('slider-R').value);
+        const V_m = parseFloat(document.getElementById('slider-Vm').value);
+        const isIdeal = document.getElementById('cb-ideal').checked;
+        const V_diodo = isIdeal ? 0 : 0.7;
+        
+        document.getElementById('val-E').textContent = E.toFixed(1) + ' V';
+        document.getElementById('val-R').textContent = R.toFixed(1) + ' Ω';
+        document.getElementById('val-Vm').textContent = V_m.toFixed(1) + ' V';
+        document.getElementById('val-piv').textContent = (V_m + E).toFixed(1) + ' V';
+
+        // Update Circuit
+        drawCircuitContext(E, R, V_m, V_diodo);
+
+        // Update Graph
+        const w = canvasGraph.width / (window.devicePixelRatio || 1);
+        const h = canvasGraph.height / (window.devicePixelRatio || 1);
+        ctxGraph.clearRect(0, 0, w, h);
+        
+        const marginLeft = 40;
+        const marginRight = 40;
+        const marginTop = 20;
+        const marginBottom = 30;
+        const graphW = w - marginLeft - marginRight;
+        const graphH = h - marginTop - marginBottom;
+        const originY = marginTop + (graphH * 0.6); // Slightly lower to fit positive peaks
+
+        // Scales
+        const maxVoltageDisplay = 30; // Max voltage to show on Y axis
+        const maxCurrentDisplay = 15; // Max current to show on secondary Y axis
+        const pixelsPerVolt = (originY - marginTop) / maxVoltageDisplay;
+        const pixelsPerAmp = (originY - marginTop) / maxCurrentDisplay;
+        const totalTimeMs = 30; // 1.5 cycles of 50Hz
+        
+        ctxGraph.font = '10px Inter';
+        ctxGraph.textAlign = 'right';
+        ctxGraph.textBaseline = 'middle';
+        
+        // Horizontal Grid & Left Y-Axis (Voltage)
+        ctxGraph.strokeStyle = '#1e293b'; ctxGraph.lineWidth = 1;
+        for(let v = -30; v <= 30; v += 10) {
+            let y = originY - (v * pixelsPerVolt);
+            if (y >= marginTop && y <= originY + (graphH * 0.4)) { // bounds check
+                ctxGraph.beginPath(); ctxGraph.moveTo(marginLeft, y); ctxGraph.lineTo(w - marginRight, y); ctxGraph.stroke();
+                ctxGraph.fillStyle = '#94a3b8';
+                ctxGraph.fillText(v + 'V', marginLeft - 5, y);
+            }
+        }
+        
+        // Right Y-Axis (Current)
+        ctxGraph.textAlign = 'left';
+        for(let i = 0; i <= 15; i += 5) {
+            let y = originY - (i * pixelsPerAmp);
+            if (y >= marginTop) {
+                ctxGraph.fillStyle = '#60a5fa'; // Blue for current labels
+                ctxGraph.fillText(i + 'A', w - marginRight + 5, y);
+            }
+        }
+
+        // Vertical Grid & X-Axis (Time)
+        ctxGraph.textAlign = 'center'; ctxGraph.textBaseline = 'top';
+        for(let t = 0; t <= totalTimeMs; t += 5) {
+            let x = marginLeft + (t / totalTimeMs) * graphW;
+            ctxGraph.strokeStyle = '#1e293b';
+            ctxGraph.beginPath(); ctxGraph.moveTo(x, marginTop); ctxGraph.lineTo(x, h - marginBottom); ctxGraph.stroke();
+            ctxGraph.fillStyle = '#94a3b8';
+            ctxGraph.fillText(t + 'ms', x, h - marginBottom + 5);
+        }
+
+        // Main Axis Lines
+        ctxGraph.strokeStyle = '#475569'; ctxGraph.lineWidth = 2;
+        ctxGraph.beginPath(); ctxGraph.moveTo(marginLeft, marginTop); ctxGraph.lineTo(marginLeft, h - marginBottom); ctxGraph.stroke(); // Left Y
+        ctxGraph.beginPath(); ctxGraph.moveTo(w - marginRight, marginTop); ctxGraph.lineTo(w - marginRight, h - marginBottom); ctxGraph.stroke(); // Right Y
+        ctxGraph.beginPath(); ctxGraph.moveTo(marginLeft, originY); ctxGraph.lineTo(w - marginRight, originY); ctxGraph.stroke(); // X
+
+        // 1. Draw Battery Voltage (E)
+        const y_E = originY - (E * pixelsPerVolt);
+        ctxGraph.strokeStyle = '#22c55e'; ctxGraph.lineWidth = 2;
+        ctxGraph.beginPath(); ctxGraph.moveTo(marginLeft, y_E); ctxGraph.lineTo(w - marginRight, y_E); ctxGraph.stroke();
+
+        // 2. Draw AC Source (V_S)
+        ctxGraph.strokeStyle = '#ef4444'; ctxGraph.lineWidth = 2;
+        ctxGraph.beginPath();
+        let ac_data = [];
+        for (let x = marginLeft; x <= w - marginRight; x++) {
+            let t = ((x - marginLeft) / graphW) * totalTimeMs;
+            let v_s = V_m * Math.sin(2 * Math.PI * (Freq/1000) * t);
+            let y = originY - (v_s * pixelsPerVolt);
+            ac_data.push({x: x, v: v_s});
+            if (x === marginLeft) ctxGraph.moveTo(x, y);
+            else ctxGraph.lineTo(x, y);
+        }
+        ctxGraph.stroke();
+
+        // 3. Draw Current (i_O)
+        ctxGraph.strokeStyle = '#3b82f6'; ctxGraph.fillStyle = '#3b82f6'; ctxGraph.lineWidth = 2;
+        ctxGraph.beginPath();
+        for (let i = 0; i < ac_data.length; i++) {
+            let p = ac_data[i];
+            let i_O = 0;
+            // Diode conducts if V_S > E + V_diodo
+            if (p.v > (E + V_diodo)) {
+                i_O = (p.v - E - V_diodo) / R; 
+            }
+            let y_i = originY - (i_O * pixelsPerAmp);
+            if (i === 0) ctxGraph.moveTo(p.x, y_i);
+            else ctxGraph.lineTo(p.x, y_i);
+            
+            // Draw discrete points to mimic the screenshot
+            if(i % 12 === 0 && i > 0) ctxGraph.fillRect(p.x - 1.5, y_i - 1.5, 3, 3);
+        }
+        ctxGraph.stroke();
+
+        // 4. Draw PIV Arrow
+        const negPeakTimeMs = 15; // 3/4 of 20ms period is the negative peak
+        const negativePeakX = marginLeft + (negPeakTimeMs / totalTimeMs) * graphW; 
+        
+        if(negativePeakX <= w - marginRight) {
+            const y_neg_peak = originY - (-V_m * pixelsPerVolt);
+            ctxGraph.strokeStyle = '#fff'; ctxGraph.lineWidth = 2;
+            ctxGraph.beginPath(); ctxGraph.moveTo(negativePeakX, y_E); ctxGraph.lineTo(negativePeakX, y_neg_peak); ctxGraph.stroke();
+            
+            // Arrowheads
+            ctxGraph.beginPath(); ctxGraph.moveTo(negativePeakX - 4, y_E + 5); ctxGraph.lineTo(negativePeakX, y_E); ctxGraph.lineTo(negativePeakX + 4, y_E + 5); ctxGraph.stroke();
+            ctxGraph.beginPath(); ctxGraph.moveTo(negativePeakX - 4, y_neg_peak - 5); ctxGraph.lineTo(negativePeakX, y_neg_peak); ctxGraph.lineTo(negativePeakX + 4, y_neg_peak - 5); ctxGraph.stroke();
+            
+            // Label
+            ctxGraph.fillStyle = '#fff'; ctxGraph.textAlign = 'left'; ctxGraph.textBaseline = 'middle';
+            ctxGraph.font = 'bold 12px Inter';
+            ctxGraph.fillText(`V_dPI = V_m + E`, negativePeakX + 10, originY - ((E - V_m)/2 * pixelsPerVolt));
+        }
+    }
+
+    // Init
+    resize();
+</script>
+</body>
+</html>
