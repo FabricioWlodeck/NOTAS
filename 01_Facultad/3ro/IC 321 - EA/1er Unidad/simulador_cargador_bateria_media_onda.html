@@ -253,22 +253,72 @@
         ctxGraph.beginPath(); ctxGraph.moveTo(w - marginRight, marginTop); ctxGraph.lineTo(w - marginRight, h - marginBottom); ctxGraph.stroke(); // Right Y
         ctxGraph.beginPath(); ctxGraph.moveTo(marginLeft, originY); ctxGraph.lineTo(w - marginRight, originY); ctxGraph.stroke(); // X
 
-        // 1. Draw Battery Voltage (E)
+        // Pre-calcular datos de alterna para encontrar θ1 y θ2
+        let ac_data = [];
+        let firstPulseStart = null;
+        let firstPulseEnd = null;
+        
+        for (let x = marginLeft; x <= w - marginRight; x++) {
+            let t = ((x - marginLeft) / graphW) * totalTimeMs;
+            let v_s = V_m * Math.sin(2 * Math.PI * (Freq/1000) * t);
+            let y = originY - (v_s * pixelsPerVolt);
+            ac_data.push({x: x, v: v_s, y: y});
+            
+            if (t <= 10) { // Solo evaluar el primer semiciclo positivo (0 a 10ms)
+                if (v_s > (E + V_diodo)) {
+                    if (firstPulseStart === null) firstPulseStart = {x: x, y: y};
+                    firstPulseEnd = {x: x, y: y};
+                }
+            }
+        }
+
         const y_E = originY - (E * pixelsPerVolt);
+
+        // Marcar intervalo de conducción (θ1 y θ2)
+        if (firstPulseStart && firstPulseEnd) {
+            // Relleno con líneas de trazo (Hatching) del color de la fuente (Rojo)
+            ctxGraph.strokeStyle = 'rgba(239, 68, 68, 0.4)'; // Rojo semitransparente
+            ctxGraph.lineWidth = 1;
+            ctxGraph.beginPath();
+            for (let i = 0; i < ac_data.length; i++) {
+                let p = ac_data[i];
+                if (p.x >= firstPulseStart.x && p.x <= firstPulseEnd.x) {
+                    if (i % 5 === 0) { // Una línea vertical de relleno cada 5 píxeles
+                        ctxGraph.moveTo(p.x, p.y); // Desde la onda roja de alterna
+                        ctxGraph.lineTo(p.x, y_E); // Hasta la línea verde de la batería
+                    }
+                }
+            }
+            ctxGraph.stroke();
+
+            // Líneas punteadas verticales hacia el eje para θ1 y θ2
+            ctxGraph.strokeStyle = '#94a3b8';
+            ctxGraph.setLineDash([4, 4]);
+            ctxGraph.beginPath();
+            ctxGraph.moveTo(firstPulseStart.x, originY); ctxGraph.lineTo(firstPulseStart.x, firstPulseStart.y);
+            ctxGraph.moveTo(firstPulseEnd.x, originY); ctxGraph.lineTo(firstPulseEnd.x, firstPulseEnd.y);
+            ctxGraph.stroke();
+            ctxGraph.setLineDash([]);
+
+            // Etiquetas θ1 y θ2 en el eje de tiempo
+            ctxGraph.fillStyle = '#cbd5e1';
+            ctxGraph.font = 'bold 14px Inter';
+            ctxGraph.textAlign = 'center';
+            ctxGraph.fillText('θ₁', firstPulseStart.x - 12, originY + 15);
+            ctxGraph.fillText('θ₂', firstPulseEnd.x + 12, originY + 15);
+        }
+
+        // 1. Draw Battery Voltage (E)
         ctxGraph.strokeStyle = '#22c55e'; ctxGraph.lineWidth = 2;
         ctxGraph.beginPath(); ctxGraph.moveTo(marginLeft, y_E); ctxGraph.lineTo(w - marginRight, y_E); ctxGraph.stroke();
 
         // 2. Draw AC Source (V_S)
         ctxGraph.strokeStyle = '#ef4444'; ctxGraph.lineWidth = 2;
         ctxGraph.beginPath();
-        let ac_data = [];
-        for (let x = marginLeft; x <= w - marginRight; x++) {
-            let t = ((x - marginLeft) / graphW) * totalTimeMs;
-            let v_s = V_m * Math.sin(2 * Math.PI * (Freq/1000) * t);
-            let y = originY - (v_s * pixelsPerVolt);
-            ac_data.push({x: x, v: v_s});
-            if (x === marginLeft) ctxGraph.moveTo(x, y);
-            else ctxGraph.lineTo(x, y);
+        for (let i = 0; i < ac_data.length; i++) {
+            let p = ac_data[i];
+            if (i === 0) ctxGraph.moveTo(p.x, p.y);
+            else ctxGraph.lineTo(p.x, p.y);
         }
         ctxGraph.stroke();
 
