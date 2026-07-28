@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador JFET: Efecto de Estrangulamiento</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+        }
+        #sim-container {
+            background-color: #1e293b;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 900px;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            max-width: 450px;
+            height: auto;
+            aspect-ratio: 4/5;
+            background-color: #020617; /* Slate 950 */
+            border-radius: 0.5rem;
+            border: 1px solid #334155;
+            margin: 0 auto;
+        }
+        .slider-container {
+            background: linear-gradient(90deg, #ef4444 0%, #3b82f6 100%);
+            padding: 1px;
+            border-radius: 0.5rem;
+        }
+        input[type=range] {
+            width: 100%;
+            background: #1e293b;
+            border-radius: 0.5rem;
+            outline: none;
+            height: 8px;
+            -webkit-appearance: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+    </style>
+</head>
+<body>
+
+<div id="sim-container" class="flex flex-col gap-6">
+    <div class="text-center">
+        <h1 class="text-2xl font-bold text-sky-400">JFET Canal N: Efecto de Empobrecimiento</h1>
+        <p class="text-slate-400 mt-1 text-sm max-w-2xl mx-auto">
+            Aumentá el voltaje negativo en la compuerta para observar cómo crece la zona de empobrecimiento, estrangulando el paso de los electrones hasta el corte ($V_P$).
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        
+        <!-- Panel Izquierdo: Animación -->
+        <div class="relative w-full flex justify-center">
+            <canvas id="jfetCanvas"></canvas>
+            
+            <!-- Etiquetas Flotantes -->
+            <div class="absolute top-2 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-300 bg-slate-800/80 px-2 py-1 rounded">Drenaje (D)</div>
+            <div class="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-300 bg-slate-800/80 px-2 py-1 rounded">Fuente (S)</div>
+            <div class="absolute top-1/2 left-2 -translate-y-1/2 text-xs font-bold text-rose-400 bg-slate-800/80 px-2 py-1 rounded">Compuerta (G)</div>
+        </div>
+
+        <!-- Panel Derecho: Controles e Info -->
+        <div class="flex flex-col gap-6">
+            
+            <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
+                <h3 class="text-lg font-bold text-white mb-4">Control de Compuerta</h3>
+                
+                <div class="flex justify-between text-sm font-bold mb-2">
+                    <span class="text-red-400">-5V (Corte)</span>
+                    <span class="text-sky-400">0V (Máx)</span>
+                </div>
+                
+                <div class="slider-container mb-4">
+                    <input type="range" id="vgs-slider" min="-5" max="0" step="0.1" value="0">
+                </div>
+                
+                <div class="flex justify-between items-center bg-slate-900 p-3 rounded border border-slate-700 font-mono text-lg">
+                    <span class="text-slate-400">V_GS =</span>
+                    <span id="vgs-val" class="font-bold text-rose-400">0.0 V</span>
+                </div>
+            </div>
+
+            <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
+                <h3 class="text-sm text-slate-400 uppercase tracking-wide font-bold mb-3">Lectura de Corriente (I_D)</h3>
+                <div class="flex items-end gap-2">
+                    <span id="id-val" class="text-4xl font-bold text-cyan-400">10.0</span>
+                    <span class="text-cyan-600 font-bold mb-1">mA</span>
+                </div>
+                
+                <!-- Barra de progreso visual para la corriente -->
+                <div class="w-full bg-slate-900 rounded-full h-2.5 mt-4 border border-slate-700 overflow-hidden">
+                    <div id="id-bar" class="bg-cyan-500 h-2.5 rounded-full transition-all duration-300" style="width: 100%"></div>
+                </div>
+            </div>
+            
+            <div class="text-sm text-slate-400 space-y-2 border-l-2 border-sky-500 pl-3">
+                <p>Las zonas <strong class="text-rose-400">P (rosas)</strong> generan un campo eléctrico invisible que repele electrones.</p>
+                <p>La <strong class="text-yellow-200">zona rayada brillante</strong> es el "muro" (vaciamiento).</p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('jfetCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Resize for high DPI
+    function resize() {
+        const dpr = window.devicePixelRatio || 1;
+        // Logical size
+        const logicalWidth = 400;
+        const logicalHeight = 500;
+        
+        canvas.width = logicalWidth * dpr;
+        canvas.height = logicalHeight * dpr;
+        ctx.scale(dpr, dpr);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Parámetros físicos teóricos
+    const V_P = -5; // Voltaje Pinch-off
+    const I_DSS = 10; // Corriente máxima en mA
+    let V_GS = 0; // Valor inicial
+    
+    let particles = [];
+
+    // Referencias al DOM
+    const slider = document.getElementById('vgs-slider');
+    const vgsVal = document.getElementById('vgs-val');
+    const idVal = document.getElementById('id-val');
+    const idBar = document.getElementById('id-bar');
+
+    slider.addEventListener('input', (e) => {
+        V_GS = parseFloat(e.target.value);
+    });
+
+    // Coordenadas base del dibujo (escala 400x500)
+    const cw = 400;
+    const ch = 500;
+    
+    const channelW = 140;
+    const channelH = 300;
+    const channelX = (cw - channelW) / 2;
+    const channelY = (ch - channelH) / 2;
+
+    const pZoneW = 40;
+    const pZoneH = 100;
+    const pZoneY = channelY + (channelH - pZoneH) / 2;
+    const pZoneLeftX = channelX - pZoneW/2;
+    const pZoneRightX = channelX + channelW - pZoneW/2;
+
+    class Electron {
+        constructor() {
+            this.reset(true);
+        }
+        
+        reset(randomY = false) {
+            // Empiezan en la Fuente (Abajo)
+            this.x = channelX + Math.random() * channelW;
+            this.y = randomY ? channelY + Math.random() * channelH : channelY + channelH;
+            
+            // Velocidad base
+            this.speed = 2 + Math.random() * 2;
+            this.wobble = Math.random() * Math.PI * 2;
+            this.wobbleSpeed = 0.1 + Math.random() * 0.1;
+        }
+
+        update(availableWidth, pinchFactor) {
+            // Movemos de abajo hacia arriba (Fuente a Drenaje)
+            this.y -= this.speed * (0.2 + (1 - pinchFactor)*0.8); // Se frenan un poco al cerrarse
+            
+            // Efecto embudo: empujar las partículas hacia el centro si chocan con la zona de empobrecimiento
+            const centerX = cw / 2;
+            const distFromCenter = Math.abs(this.x - centerX);
+            const currentAllowedRadius = availableWidth / 2;
+
+            // Si están en la altura de las zonas P (donde ocurre el estrangulamiento)
+            if (this.y > pZoneY - 20 && this.y < pZoneY + pZoneH + 20) {
+                if (distFromCenter > currentAllowedRadius) {
+                    // Empujar hacia el centro bruscamente
+                    this.x += (this.x > centerX ? -1 : 1) * 4;
+                }
+            }
+
+            // Pequeño bamboleo lateral aleatorio
+            this.wobble += this.wobbleSpeed;
+            this.x += Math.sin(this.wobble) * 0.5;
+
+            // Limitar a los bordes rígidos del canal N siempre
+            if (this.x < channelX + 5) this.x = channelX + 5;
+            if (this.x > channelX + channelW - 5) this.x = channelX + channelW - 5;
+
+            // Si llegó arriba, respawnear abajo
+            if (this.y < channelY) {
+                this.reset();
+            }
+        }
+
+        draw(ctx, pinchFactor) {
+            // Si está totalmente ahorcado, no dibujar (apagar electrones)
+            if (pinchFactor >= 0.99) return;
+            
+            ctx.fillStyle = '#22d3ee'; // Cyan
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = '#22d3ee';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    // Inicializar 150 electrones
+    for(let i=0; i<150; i++) particles.push(new Electron());
+
+    function draw() {
+        ctx.clearRect(0, 0, cw, ch);
+
+        // 1. Matemáticas del JFET
+        // Ecuación de Shockley: I_D = I_DSS * (1 - V_GS/V_P)^2
+        let I_D = I_DSS * Math.pow((1 - V_GS/V_P), 2);
+        if (V_GS <= V_P) I_D = 0; // Cutoff
+        
+        // Factor de estrangulamiento (0 = Abierto, 1 = Cerrado)
+        let pinchFactor = Math.abs(V_GS / V_P); 
+        if (pinchFactor > 1) pinchFactor = 1;
+
+        // Ancho máximo que puede invadir cada zona (casi hasta el centro)
+        const maxDepletionPenetration = (channelW / 2) - 2; 
+        const currentDepletion = maxDepletionPenetration * pinchFactor;
+        const availableWidth = channelW - (currentDepletion * 2);
+
+        // Actualizar UI Text
+        vgsVal.textContent = V_GS.toFixed(1) + " V";
+        idVal.textContent = I_D.toFixed(1);
+        idBar.style.width = `${(I_D / I_DSS) * 100}%`;
+        
+        // Cambiar colores si está apagado
+        if(I_D === 0) {
+            idVal.classList.replace('text-cyan-400', 'text-slate-500');
+            idBar.classList.replace('bg-cyan-500', 'bg-slate-500');
+        } else {
+            idVal.classList.replace('text-slate-500', 'text-cyan-400');
+            idBar.classList.replace('bg-slate-500', 'bg-cyan-500');
+        }
+
+        // --- Dibujo de Estructuras Físicas ---
+
+        // Drenaje y Fuente (Cables metálicos)
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(cw/2 - 10, channelY - 40, 20, 40); // Top wire
+        ctx.fillRect(cw/2 - 10, channelY + channelH, 20, 40); // Bottom wire
+        // Placas de contacto
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(cw/2 - 40, channelY - 10, 80, 10);
+        ctx.fillRect(cw/2 - 40, channelY + channelH, 80, 10);
+
+        // Compuerta (Cables)
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(pZoneLeftX - 40, pZoneY + pZoneH/2 - 5, 40, 10); // Left wire
+        ctx.fillRect(pZoneRightX + pZoneW, pZoneY + pZoneH/2 - 5, 40, 10); // Right wire
+        // Conexión externa imaginaria entre ambas compuertas
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pZoneLeftX - 40, pZoneY + pZoneH/2);
+        ctx.lineTo(pZoneLeftX - 40, pZoneY - 40);
+        ctx.lineTo(pZoneRightX + 80, pZoneY - 40);
+        ctx.lineTo(pZoneRightX + 80, pZoneY + pZoneH/2);
+        ctx.lineTo(pZoneRightX + pZoneW, pZoneY + pZoneH/2);
+        ctx.stroke();
+
+        // Canal N (Cuerpo principal)
+        ctx.fillStyle = '#334155'; // Dark slate (Material N base)
+        ctx.fillRect(channelX, channelY, channelW, channelH);
+        ctx.strokeStyle = '#475569';
+        ctx.strokeRect(channelX, channelY, channelW, channelH);
+        
+        ctx.fillStyle = '#64748b';
+        ctx.font = 'bold 24px Inter';
+        ctx.textAlign = 'center';
+        // Solo mostrar texto si hay espacio
+        if(pinchFactor < 0.6) {
+            ctx.fillText('N', cw/2, pZoneY + pZoneH/2 + 8);
+        }
+
+        // Dibujar Zonas de Empobrecimiento (El muro invisible)
+        // Usaremos curvas de Bezier para hacer que el campo eléctrico se vea orgánico (como un bulto)
+        
+        ctx.fillStyle = 'rgba(253, 224, 71, 0.15)'; // Amarillo transparente (fuerza repelente)
+        
+        // Función auxiliar para dibujar un bulto de empobrecimiento
+        function drawDepletionZone(isLeft, penetration) {
+            const startX = isLeft ? channelX : channelX + channelW;
+            const dir = isLeft ? 1 : -1;
+            const peakX = startX + (penetration * dir);
+            
+            // El campo eléctrico se extiende más arriba y abajo de la zona P física
+            const fieldStartY = pZoneY - 30;
+            const fieldEndY = pZoneY + pZoneH + 30;
+
+            ctx.beginPath();
+            ctx.moveTo(startX, fieldStartY);
+            // Curva suave hacia el pico
+            ctx.bezierCurveTo(
+                startX, fieldStartY + 30, // Control 1
+                peakX, pZoneY,           // Control 2
+                peakX, pZoneY + pZoneH/2 // Punto máximo de extrangulamiento
+            );
+            // Curva suave de regreso
+            ctx.bezierCurveTo(
+                peakX, pZoneY + pZoneH,  // Control 1
+                startX, fieldEndY - 30,  // Control 2
+                startX, fieldEndY        // Fin
+            );
+            ctx.closePath();
+            ctx.fill();
+
+            // Dibujar borde rayado para dar la idea de "Fuerza/Campo"
+            ctx.strokeStyle = 'rgba(253, 224, 71, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // Solo dibujar la zona si hay penetración (Vgs < 0)
+        if (currentDepletion > 0) {
+            drawDepletionZone(true, currentDepletion);  // Izquierda
+            drawDepletionZone(false, currentDepletion); // Derecha
+        }
+
+        // Zonas P (Compuertas físicas)
+        ctx.fillStyle = '#f43f5e'; // Rose 500
+        ctx.fillRect(pZoneLeftX, pZoneY, pZoneW, pZoneH);
+        ctx.fillRect(pZoneRightX, pZoneY, pZoneW, pZoneH);
+        
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 16px Inter';
+        ctx.fillText('P', pZoneLeftX + pZoneW/2, pZoneY + pZoneH/2 + 6);
+        ctx.fillText('P', pZoneRightX + pZoneW/2, pZoneY + pZoneH/2 + 6);
+
+        // Dibujar y actualizar electrones (La corriente)
+        // Ajustamos la cantidad de partículas visibles basándonos en la corriente calculada
+        const activeParticles = Math.floor((I_D / I_DSS) * particles.length);
+        
+        for(let i = 0; i < particles.length; i++) {
+            if (i < activeParticles) {
+                particles[i].update(availableWidth, pinchFactor);
+                particles[i].draw(ctx, pinchFactor);
+            } else {
+                // Mantenerlos en el fondo para que cuando suba la corriente ya estén listos
+                 particles[i].reset(true);
+            }
+        }
+
+        requestAnimationFrame(draw);
+    }
+
+    // Iniciar el bucle de animación
+    draw();
+
+</script>
+</body>
+</html>

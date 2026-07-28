@@ -4,6 +4,21 @@ tags:
 ---
 # IC 321 - ELECTRÓNICA ANALÓGICA (EA)
 
+## ==TEMAS INDISPENSABLES PARA PRESENTARSE (auxiliar)==:
+1) Transistores FET
+2) Rectificadores con **Filtros pasivos**
+3) Amplificadores Operacionales (AO)
+4) Filtros Activos (FA)
+5) Regulares de Tensión
+
+# TO DO:
+- [ ] Transistores FET
+	- Describir el principio de funcionamiento de un FET de canal n de empobrecimiento. Agregar bosquejos de la estructura simplificada del dispositivo.
+- [ ]  Multivibradores
+- [ ] AO - Aplicaciones  (integrador, etc)
+- [ ] FA
+- [ ] Regulador de Tensión
+
 ## Bibliografía:
 - *Electrónica: Teoría de Circuitos y Dispositivos Electrónicos* — R. L. Boylestad — 10a ed. (2009) 
 - *Dispositivos Electrónicos* — T. L. Floyd — 8va ed. (2008)  ==PRINCIPAL==
