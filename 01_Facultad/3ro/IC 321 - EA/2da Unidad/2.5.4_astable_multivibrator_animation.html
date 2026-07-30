@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astable Multivibrator Animation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+        }
+        #sim-container {
+            background-color: #1e293b;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            width: 100%;
+            max-width: 950px;
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            border-radius: 0.5rem;
+            background-color: #020617;
+            border: 1px solid #334155;
+            aspect-ratio: 16/10;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .state-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .state-btn.active {
+            box-shadow: 0 0 10px currentColor;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+
+<div id="sim-container" class="flex flex-col gap-4">
+    <div class="text-center">
+        <h1 class="text-2xl font-bold text-sky-400">Multivibrador Astable: Tensiones y Corrientes Reales</h1>
+        <p class="text-slate-400 mt-1 text-sm max-w-3xl mx-auto">
+            Observá cómo los nodos cambian de voltaje en tiempo real. Prestá atención a cómo las bases (nodos inferiores) suben desde voltajes negativos hasta $0.7\text{V}$ para disparar los transistores.
+        </p>
+    </div>
+
+    <!-- Controls -->
+    <div class="flex flex-wrap justify-center gap-4 mt-2 mb-2">
+        <button id="btn-auto" class="state-btn active px-6 py-2 bg-emerald-600/20 border-2 border-emerald-500 text-emerald-400 font-bold rounded-lg text-sm">
+            Auto Play
+        </button>
+        <button id="btn-state1" class="state-btn px-6 py-2 bg-slate-800 border-2 border-cyan-500 text-cyan-400 font-bold rounded-lg text-sm">
+            Fijar: T1 ON, T2 OFF
+        </button>
+        <button id="btn-state2" class="state-btn px-6 py-2 bg-slate-800 border-2 border-pink-500 text-pink-400 font-bold rounded-lg text-sm">
+            Fijar: T1 OFF, T2 ON
+        </button>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="circuitCanvas"></canvas>
+    </div>
+    
+    <!-- Dynamic Explanation Panel -->
+    <div id="explanation" class="bg-slate-800 p-4 rounded-lg border border-slate-700 min-h-[100px] text-sm">
+        <!-- Javascript will update this text -->
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('circuitCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let cw, ch;
+    
+    // --- Layout Configuration ---
+    const L = {
+        vccY: 0.1,
+        gndY: 0.9,
+        
+        // Horizontal positions matching schematic Rc - R1 - R2 - Rc
+        col1X: 0.2, // Left Rc line & T1
+        r1X: 0.4,   // R1 line
+        r2X: 0.6,   // R2 line
+        col2X: 0.8, // Right Rc line & T2
+        
+        // Vertical positions
+        resTopY: 0.15,
+        resBotY: 0.35,
+        
+        capY: 0.45,
+        
+        baseY: 0.70,
+        emitY: 0.90
+    };
+
+    function resize() {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        cw = rect.width;
+        ch = rect.height;
+        canvas.width = cw * dpr;
+        canvas.height = ch * dpr;
+        ctx.scale(dpr, dpr);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // --- State Management ---
+    let state = {
+        mode: 'auto',
+        t1On: true,
+        phaseTime: 0, 
+        phaseDuration: 4000, // ms per state
+        lastTime: performance.now(),
+        vccVal: 5.0
+    };
+
+    const explanations = {
+        t1On: `<strong class="text-cyan-400">Estado: T1 SATURADO (ON) / T2 CORTADO (OFF)</strong><br/>
+               <ul class="list-disc ml-5 mt-2 space-y-1 text-slate-300">
+               <li><span class="text-fuchsia-400">El Nodo Colector de T1</span> cae a <strong class="text-white">V_CEsat ≈ 0V</strong>, arrastrando la base de T2 a voltajes negativos.</li>
+               <li><span class="text-blue-400">Carga Rápida C2:</span> La corriente baja por Rc(der), atraviesa C2 y se une a la corriente de R2 para entrar a la base de T1 manteniéndolo ON.</li>
+               <li><span class="text-purple-400">Carga Lenta (Temporizador):</span> El capacitor C1 se va cargando lentamente a través de R1. Observá cómo la tensión en la base de T2 sube progresivamente hasta llegar a 0.7V.</li></ul>`,
+        
+        t2On: `<strong class="text-pink-400">Estado: T1 CORTADO (OFF) / T2 SATURADO (ON)</strong><br/>
+               <ul class="list-disc ml-5 mt-2 space-y-1 text-slate-300">
+               <li><span class="text-fuchsia-400">El Nodo Colector de T2</span> cae a <strong class="text-white">V_CEsat ≈ 0V</strong>, arrastrando la base de T1 a voltajes negativos.</li>
+               <li><span class="text-blue-400">Carga Rápida C1:</span> La corriente baja por Rc(izq), atraviesa C1 y se une a la corriente de R1 para entrar a la base de T2 manteniéndolo ON.</li>
+               <li><span class="text-purple-400">Carga Lenta (Temporizador):</span> El capacitor C2 se va cargando lentamente a través de R2. Observá cómo la tensión en la base de T1 sube progresivamente hasta llegar a 0.7V.</li></ul>`
+    };
+
+    document.getElementById('btn-auto').addEventListener('click', (e) => setMode('auto', e.target));
+    document.getElementById('btn-state1').addEventListener('click', (e) => setMode('state1', e.target));
+    document.getElementById('btn-state2').addEventListener('click', (e) => setMode('state2', e.target));
+
+    function setMode(mode, btnElement) {
+        state.mode = mode;
+        if(mode === 'state1') state.t1On = true;
+        if(mode === 'state2') state.t1On = false;
+        
+        document.querySelectorAll('.state-btn').forEach(b => {
+            b.classList.remove('active');
+            b.style.transform = 'scale(1)';
+        });
+        btnElement.classList.add('active');
+        updateExplanation();
+    }
+
+    function updateExplanation() {
+        document.getElementById('explanation').innerHTML = state.t1On ? explanations.t1On : explanations.t2On;
+    }
+    updateExplanation();
+
+    // --- Drawing Utilities ---
+    
+    function drawResistor(x, yTop, yBot, color) {
+        ctx.strokeStyle = color; 
+        ctx.lineWidth = 2; 
+        ctx.beginPath();
+        const h = Math.abs(yBot - yTop);
+        const step = h / 11;
+        
+        ctx.moveTo(x, yTop); ctx.lineTo(x, yTop + step);
+        let cy = yTop + step;
+        for(let i=0; i<5; i++) {
+            ctx.lineTo(x - 8, cy + step/2); ctx.lineTo(x + 8, cy + step*1.5);
+            cy += step * 2;
+        }
+        ctx.lineTo(x, cy + step/2); ctx.lineTo(x, yBot);
+        ctx.stroke();
+    }
+
+    function drawCapacitor(xCenter, y, color) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(xCenter - 5, y - 12); ctx.lineTo(xCenter - 5, y + 12);
+        ctx.moveTo(xCenter + 5, y - 12); ctx.lineTo(xCenter + 5, y + 12);
+        ctx.stroke();
+    }
+
+    function drawTransistor(xCol, yCol, yEmit, yBase, isLeft, isOn) {
+        const color = isOn ? (isLeft ? '#06b6d4' : '#ec4899') : '#475569';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+
+        const dir = isLeft ? 1 : -1;
+        const bLineX = xCol + (dir * 18);
+        const termX = xCol + (dir * 35); 
+
+        // Collector wire to transistor
+        ctx.beginPath(); ctx.moveTo(xCol, yCol); ctx.lineTo(xCol, yBase - 15); ctx.stroke();
+        // Slanted collector
+        ctx.beginPath(); ctx.moveTo(xCol, yBase - 15); ctx.lineTo(bLineX, yBase - 5); ctx.stroke();
+
+        // Base plate
+        ctx.beginPath(); ctx.moveTo(bLineX, yBase - 12); ctx.lineTo(bLineX, yBase + 12); ctx.stroke();
+        // Base wire
+        ctx.beginPath(); ctx.moveTo(bLineX, yBase); ctx.lineTo(termX, yBase); ctx.stroke();
+
+        // Emitter slanted
+        ctx.beginPath(); ctx.moveTo(bLineX, yBase + 5); ctx.lineTo(xCol, yBase + 15); ctx.stroke();
+        // Emitter to ground
+        ctx.beginPath(); ctx.moveTo(xCol, yBase + 15); ctx.lineTo(xCol, yEmit); ctx.stroke();
+
+        // Arrow on emitter
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        if(isLeft) {
+            ctx.moveTo(xCol + 5, yBase + 11); ctx.lineTo(xCol + 13, yBase + 5); ctx.lineTo(xCol + 7, yBase + 15);
+        } else {
+            ctx.moveTo(xCol - 5, yBase + 11); ctx.lineTo(xCol - 13, yBase + 5); ctx.lineTo(xCol - 7, yBase + 15);
+        }
+        ctx.fill();
+
+        // Circle outline
+        ctx.beginPath(); ctx.arc(xCol + (dir * 9), yBase, 22, 0, Math.PI*2); ctx.stroke();
+
+        // Label
+        ctx.fillStyle = color;
+        ctx.font = 'bold 14px Inter';
+        ctx.fillText(isLeft ? 'T1' : 'T2', xCol + (dir*30), yBase - 25);
+    }
+
+    function drawTextBox(x, y, text, color, alignLeft = true) {
+        ctx.font = 'bold 12px Inter';
+        const metrics = ctx.measureText(text);
+        const padding = 6;
+        const w = metrics.width + padding*2;
+        const h = 20;
+        const boxX = alignLeft ? x : x - w;
+        const boxY = y - h/2;
+
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(boxX, boxY, w, h, 4); ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, boxX + w/2, boxY + h/2 + 1);
+    }
+
+    
+    function drawParticlesOnPath(points, color, speed, density) {
+        ctx.fillStyle = color;
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = color;
+        
+        const move = (performance.now() * speed) % density;
+        let segments = [];
+        let totalLen = 0;
+        
+        for(let i=0; i<points.length-1; i++) {
+            let dx = points[i+1].x - points[i].x;
+            let dy = points[i+1].y - points[i].y;
+            let len = Math.sqrt(dx*dx + dy*dy);
+            segments.push({len, dx, dy, startX: points[i].x, startY: points[i].y});
+            totalLen += len;
+        }
+
+        for (let p = move; p < totalLen; p += density) {
+            let currentLen = 0;
+            for (let i = 0; i < segments.length; i++) {
+                if (p <= currentLen + segments[i].len) {
+                    let ratio = (p - currentLen) / segments[i].len;
+                    let px = segments[i].startX + segments[i].dx * ratio;
+                    let py = segments[i].startY + segments[i].dy * ratio;
+                    ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI * 2); ctx.fill();
+                    break;
+                }
+                currentLen += segments[i].len;
+            }
+        }
+        ctx.shadowBlur = 0;
+    }
+
+    
+    function draw() {
+        ctx.clearRect(0, 0, cw, ch);
+        
+        const time = performance.now();
+        const dt = time - state.lastTime;
+        state.lastTime = time;
+
+        if (state.mode === 'auto') {
+            state.phaseTime += dt / state.phaseDuration;
+            if (state.phaseTime >= 1) {
+                state.phaseTime = 0;
+                state.t1On = !state.t1On;
+                updateExplanation();
+            }
+        }
+
+        // Layout mapping
+        const yVcc = ch * L.vccY; const yGnd = ch * L.gndY;
+        const yResTop = ch * L.resTopY; const yResBot = ch * L.resBotY;
+        const yCap = ch * L.capY;
+        const yBase = ch * L.baseY; const yEmit = ch * L.emitY;
+        
+        const xCol1 = cw * L.col1X; const xR1 = cw * L.r1X;
+        const xR2 = cw * L.r2X; const xCol2 = cw * L.col2X;
+        const xC1 = (xCol1 + xR1) / 2; const xC2 = (xR2 + xCol2) / 2;
+
+        // Static wires 
+        ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 2; // Green
+        
+        // Vcc Line
+        ctx.beginPath(); ctx.moveTo(xCol1, yVcc); ctx.lineTo(xCol2, yVcc); ctx.stroke();
+        ctx.strokeStyle = '#3b82f6'; 
+        ctx.beginPath(); ctx.arc(cw/2, yVcc, 6, 0, Math.PI*2); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.font = '16px Inter'; ctx.fillText('+Vcc', cw/2 + 15, yVcc);
+        
+        // Ground Line
+        ctx.beginPath(); ctx.moveTo(xCol1, yGnd); ctx.lineTo(xCol2, yGnd); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cw/2, yGnd); ctx.lineTo(cw/2, yGnd + 15); 
+        ctx.moveTo(cw/2 - 10, yGnd + 15); ctx.lineTo(cw/2 + 10, yGnd + 15);
+        ctx.moveTo(cw/2 - 5, yGnd + 20); ctx.lineTo(cw/2 + 5, yGnd + 20); ctx.stroke();
+
+        // Resistors
+        drawResistor(xCol1, yResTop, yResBot, '#22c55e'); ctx.fillStyle = '#22c55e'; ctx.fillText('Rc', xCol1 - 25, (yResTop+yResBot)/2);
+        drawResistor(xR1, yResTop, yResBot, '#22c55e'); ctx.fillText('R1', xR1 + 15, (yResTop+yResBot)/2);
+        drawResistor(xR2, yResTop, yResBot, '#22c55e'); ctx.fillText('R2', xR2 + 15, (yResTop+yResBot)/2);
+        drawResistor(xCol2, yResTop, yResBot, '#22c55e'); ctx.fillText('Rc', xCol2 + 15, (yResTop+yResBot)/2);
+
+        // Connections Vcc to Resistors
+        ctx.strokeStyle = '#3b82f6'; ctx.beginPath();
+        ctx.moveTo(xCol1, yVcc); ctx.lineTo(xCol1, yResTop);
+        ctx.moveTo(xR1, yVcc); ctx.lineTo(xR1, yResTop);
+        ctx.moveTo(xR2, yVcc); ctx.lineTo(xR2, yResTop);
+        ctx.moveTo(xCol2, yVcc); ctx.lineTo(xCol2, yResTop); ctx.stroke();
+
+        // Capacitors
+        drawCapacitor(xC1, yCap, '#22c55e'); ctx.fillStyle = '#fff'; ctx.fillText('C1', xC1 - 10, yCap - 25);
+        drawCapacitor(xC2, yCap, '#22c55e'); ctx.fillText('C2', xC2 - 10, yCap - 25);
+        
+        // Horizontal Wires (Capacitors)
+        ctx.strokeStyle = '#3b82f6'; ctx.beginPath();
+        ctx.moveTo(xCol1, yCap); ctx.lineTo(xC1 - 5, yCap); // Col1 to C1
+        ctx.moveTo(xC1 + 5, yCap); ctx.lineTo(xR1, yCap);   // C1 to R1 line
+        ctx.moveTo(xR2, yCap); ctx.lineTo(xC2 - 5, yCap);   // R2 to C2
+        ctx.moveTo(xC2 + 5, yCap); ctx.lineTo(xCol2, yCap); // C2 to Col2
+        ctx.stroke();
+
+        // Vertical Wires Resistors to Cap lines
+        ctx.beginPath();
+        ctx.moveTo(xCol1, yResBot); ctx.lineTo(xCol1, yCap); 
+        ctx.moveTo(xR1, yResBot); ctx.lineTo(xR1, yCap); 
+        ctx.moveTo(xR2, yResBot); ctx.lineTo(xR2, yCap); 
+        ctx.moveTo(xCol2, yResBot); ctx.lineTo(xCol2, yCap); 
+        ctx.stroke();
+
+        // Cross coupling wires
+        ctx.strokeStyle = '#22c55e'; ctx.beginPath();
+        // C1/R1 to T2 Base
+        ctx.moveTo(xR1, yCap); ctx.lineTo(xR1, yBase); ctx.lineTo(xCol2 - 35, yBase);
+        // C2/R2 to T1 Base
+        ctx.moveTo(xR2, yCap); ctx.lineTo(xR2, yBase); ctx.lineTo(xCol1 + 35, yBase);
+        ctx.stroke();
+
+        // Draw Transistors
+        drawTransistor(xCol1, yCap, yEmit, yBase, true, state.t1On);
+        drawTransistor(xCol2, yCap, yEmit, yBase, false, !state.t1On);
+
+        // Nodes (Dots)
+        ctx.fillStyle = '#3b82f6';
+        [ 
+          {x:xCol1, y:yVcc}, {x:xR1, y:yVcc}, {x:xR2, y:yVcc}, {x:xCol2, y:yVcc},
+          {x:xCol1, y:yCap}, {x:xCol2, y:yCap}, {x:xR1, y:yCap}, {x:xR2, y:yCap},
+          {x:xCol1, y:yGnd}, {x:xCol2, y:yGnd}, {x:cw/2, y:yGnd}
+        ].forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill(); });
+        
+        // Output Vo
+        ctx.beginPath(); ctx.moveTo(xCol2, yCap); ctx.lineTo(xCol2 + 30, yCap); ctx.stroke();
+        ctx.beginPath(); ctx.arc(xCol2 + 34, yCap, 4, 0, Math.PI*2); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.fillText('Vo', xCol2 + 45, yCap);
+
+        
+        // Voltage Calculations for Labels
+        let v_c1, v_c2, v_b1, v_b2;
+        const sweepVolt = (-4.3 + (5 * state.phaseTime)).toFixed(1) + 'V'; // Simulacion del voltaje subiendo
+
+        if (state.t1On) {
+            v_c1 = "V_CEsat ≈ 0V"; 
+            v_b1 = "0.7V (ON)";
+            v_c2 = "≈ Vcc (Cargando)";
+            v_b2 = sweepVolt + " (OFF)";
+        } else {
+            v_c2 = "V_CEsat ≈ 0V"; 
+            v_b2 = "0.7V (ON)";
+            v_c1 = "≈ Vcc (Cargando)";
+            v_b1 = sweepVolt + " (OFF)";
+        }
+
+        // Draw Voltage TextBoxes
+        drawTextBox(xCol1 - 15, yCap, v_c1, state.t1On ? '#f43f5e' : '#64748b', false); // Col 1 (Left aligned)
+        drawTextBox(xR1 + 10, yCap + 25, v_b2, !state.t1On ? '#06b6d4' : '#64748b', true);  // Base 2 junction
+        drawTextBox(xR2 - 10, yCap + 25, v_b1, state.t1On ? '#06b6d4' : '#64748b', false); // Base 1 junction
+        drawTextBox(xCol2 + 15, yCap - 20, v_c2, !state.t1On ? '#f43f5e' : '#64748b', true);  // Col 2 (Right aligned)
+
+
+        // --- PARTICLE FLOW LOGIC ---
+        const speedFast = 0.15; const speedSlow = 0.05;
+        const densityHigh = 12; const densityLow = 20;
+
+        if (state.t1On) {
+            // 1. Strong current through Rc1 and T1
+            const pStrong = [ {x: xCol1, y: yVcc}, {x: xCol1, y: yGnd}, {x: cw/2, y: yGnd} ];
+            drawParticlesOnPath(pStrong, '#facc15', speedFast, densityHigh); // Yellow
+
+            // 2. Fast charging of C2 (ONLY from Rc2, through C2, into Base T1)
+            const pFastCharge = [
+                {x: xCol2, y: yVcc}, {x: xCol2, y: yCap}, // Down Rc2
+                {x: xR2, y: yCap}, // Left across C2
+                {x: xR2, y: yBase}, {x: xCol1+35, y: yBase}, // Down and across to Base T1
+                {x: xCol1, y: yBase}, {x: xCol1, y: yGnd} // Out Emitter to Gnd
+            ];
+            drawParticlesOnPath(pFastCharge, '#60a5fa', speedFast, densityHigh); // Blue
+
+            // 3. Steady current keeping T1 ON (from R2 to Base T1)
+            const pKeepOn = [
+                {x: xR2, y: yVcc}, {x: xR2, y: yCap}, // Down R2
+                {x: xR2, y: yBase}, {x: xCol1+35, y: yBase} // Down and across to Base T1 (Merges with FastCharge)
+            ];
+             drawParticlesOnPath(pKeepOn, '#4ade80', speedSlow, densityLow); // Green
+
+             // 4. Recovery of C1 via R1 (The timer, charging C1 into T1 Collector)
+             const pTimer = [
+                 {x: xR1, y: yVcc}, {x: xR1, y: yCap}, // Down R1
+                 {x: xCol1, y: yCap}, // Left across C1 to T1 Collector
+                 {x: xCol1, y: yGnd} // Down to Gnd
+             ];
+             drawParticlesOnPath(pTimer, '#a78bfa', speedSlow, densityLow); // Purple
+
+        } else {
+            // 1. Strong current through Rc2 and T2
+            const pStrong = [ {x: xCol2, y: yVcc}, {x: xCol2, y: yGnd}, {x: cw/2, y: yGnd} ];
+            drawParticlesOnPath(pStrong, '#facc15', speedFast, densityHigh); // Yellow
+
+            // 2. Fast charging of C1 (ONLY from Rc1, through C1, into Base T2)
+            const pFastCharge = [
+                {x: xCol1, y: yVcc}, {x: xCol1, y: yCap}, // Down Rc1
+                {x: xR1, y: yCap}, // Right across C1
+                {x: xR1, y: yBase}, {x: xCol2-35, y: yBase}, // Down and across to Base T2
+                {x: xCol2, y: yBase}, {x: xCol2, y: yGnd} // Out Emitter to Gnd
+            ];
+            drawParticlesOnPath(pFastCharge, '#60a5fa', speedFast, densityHigh); // Blue
+
+            // 3. Steady current keeping T2 ON (from R1 to Base T2)
+            const pKeepOn = [
+                {x: xR1, y: yVcc}, {x: xR1, y: yCap}, // Down R1
+                {x: xR1, y: yBase}, {x: xCol2-35, y: yBase} // Merges with FastCharge
+            ];
+            drawParticlesOnPath(pKeepOn, '#4ade80', speedSlow, densityLow);
+
+             // 4. Recovery of C2 via R2 (The timer, charging C2 into T2 Collector)
+             const pTimer = [
+                 {x: xR2, y: yVcc}, {x: xR2, y: yCap}, // Down R2
+                 {x: xCol2, y: yCap}, // Right across C2 to T2 Collector
+                 {x: xCol2, y: yGnd} // Down to Gnd
+             ];
+             drawParticlesOnPath(pTimer, '#a78bfa', speedSlow, densityLow); // Purple
+        }
+
+        // Progress bar for auto mode
+        if (state.mode === 'auto') {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillRect(cw/2 - 50, yGnd + 40, 100, 4);
+            ctx.fillStyle = state.t1On ? '#06b6d4' : '#ec4899';
+            ctx.fillRect(cw/2 - 50, yGnd + 40, 100 * state.phaseTime, 4);
+        }
+
+        requestAnimationFrame(draw);
+    }
+
+    // Start
+    draw();
+
+</script>
+</body>
+</html>

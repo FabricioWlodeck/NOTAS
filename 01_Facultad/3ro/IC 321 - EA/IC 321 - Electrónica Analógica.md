@@ -12,9 +12,9 @@ tags:
 5) Regulares de Tensión
 
 # TO DO:
-- [ ] Transistores FET
+- [x] Transistores FET
 	- Describir el principio de funcionamiento de un FET de canal n de empobrecimiento. Agregar bosquejos de la estructura simplificada del dispositivo.
-- [ ]  Multivibradores
+- [x]  Multivibradores
 - [ ] AO - Aplicaciones  (integrador, etc)
 - [ ] FA
 - [ ] Regulador de Tensión
@@ -28,7 +28,7 @@ tags:
 - *Circuitos Microelectrónicos: Análisis y Diseño* — M. H. Rashid — 3ra ed. (2017)
 ## Lista de Unidades:
 
-- [ ] [[1.0 - Circuitos con diodos]] 
+- [x] [[1.0 - Circuitos con diodos]] 
 - [ ] [[2.0 - Circuitos con transistores bipolares y unipolares]]
 - [ ] [[3.0 - Circuitos con amplificadores operacionales]]
 - [ ] [[4.0 - Circuitos integrados analógicos y sus aplicaciones]]
@@ -47,3 +47,6 @@ tags:
 
 ## Temas Recurrentes en el Final Oral:
 [[1.0 - Circuitos con diodos#Rectificadores Filtro C y L|Rectificadores Filtro C y L]]
+- Regulares de Tensión Serie y Paralelo
+- Comparadores de ventana
+- 
