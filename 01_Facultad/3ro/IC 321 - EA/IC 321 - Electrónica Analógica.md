@@ -29,7 +29,7 @@ tags:
 ## Lista de Unidades:
 
 - [x] [[1.0 - Circuitos con diodos]] 
-- [ ] [[2.0 - Circuitos con transistores bipolares y unipolares]]
+- [x] [[2.0 - Circuitos con transistores bipolares y unipolares]]
 - [ ] [[3.0 - Circuitos con amplificadores operacionales]]
 - [ ] [[4.0 - Circuitos integrados analógicos y sus aplicaciones]]
 - [ ] [[5.0 - Fuentes de alimentación de corriente continua lineales y conmutadas]]
