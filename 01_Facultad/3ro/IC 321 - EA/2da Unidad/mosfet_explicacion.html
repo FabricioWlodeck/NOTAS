@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador MOSFET Completo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+        }
+        #sim-container {
+            background-color: #1e293b;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 950px;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            max-width: 500px;
+            height: auto;
+            aspect-ratio: 5/4;
+            background-color: #020617;
+            border-radius: 0.5rem;
+            border: 1px solid #334155;
+            margin: 0 auto;
+        }
+        .slider-container {
+            padding: 1px;
+            border-radius: 0.5rem;
+            transition: background 0.3s;
+        }
+        .slider-enriquecimiento {
+            background: linear-gradient(90deg, #334155 0%, #3b82f6 50%, #10b981 100%);
+        }
+        .slider-empobrecimiento {
+            background: linear-gradient(90deg, #ef4444 0%, #3b82f6 50%, #334155 100%);
+        }
+        input[type=range] {
+            width: 100%;
+            background: #1e293b;
+            border-radius: 0.5rem;
+            outline: none;
+            height: 8px;
+            -webkit-appearance: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+        button {
+            transition: transform 0.1s, filter 0.2s;
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+        button:hover {
+            filter: brightness(1.1);
+        }
+    </style>
+</head>
+<body>
+
+<div id="sim-container" class="flex flex-col gap-6">
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-700 pb-4">
+        <div class="text-left">
+            <h1 id="main-title" class="text-2xl font-bold text-emerald-400">MOSFET: Enriquecimiento</h1>
+            <p id="main-subtitle" class="text-slate-400 text-sm mt-1">Modo de acumulación de cargas (Normalmente Abierto)</p>
+        </div>
+        <button onclick="toggleMode()" id="toggle-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-lg border border-blue-400 whitespace-nowrap">
+            Cambiar a Empobrecimiento ⭯
+        </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        <div class="relative w-full flex justify-center">
+            <canvas id="mosfetCanvas"></canvas>
+            
+            <div class="absolute top-10 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-300 bg-slate-800/80 px-2 py-1 rounded border border-slate-600">Compuerta (G)</div>
+            <div class="absolute top-1/2 left-4 text-xs font-bold text-slate-300 bg-slate-800/80 px-2 py-1 rounded border border-cyan-700">Fuente (S)</div>
+            <div class="absolute top-1/2 right-4 text-xs font-bold text-slate-300 bg-slate-800/80 px-2 py-1 rounded border border-cyan-700">Drenaje (D)</div>
+            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs font-bold text-rose-300 bg-slate-800/80 px-2 py-1 rounded border border-rose-900">Sustrato Tipo P</div>
+        </div>
+
+        <div class="flex flex-col gap-6">
+            <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
+                <h3 class="text-lg font-bold text-white mb-4">Control de Compuerta ($V_{GS}$)</h3>
+                
+                <div class="flex justify-between text-xs font-bold mb-2 uppercase tracking-wide">
+                    <span id="slider-min-label" class="text-slate-400">0V (Corte)</span>
+                    <span id="slider-max-label" class="text-emerald-400">5V (Máx)</span>
+                </div>
+                
+                <div id="slider-bg" class="slider-container slider-enriquecimiento mb-4">
+                    <input type="range" id="vgs-slider" min="0" max="5" step="0.1" value="0">
+                </div>
+                
+                <div class="flex justify-between items-center bg-slate-900 p-3 rounded border border-slate-700 font-mono text-lg">
+                    <span class="text-slate-400">V_GS =</span>
+                    <span id="vgs-val" class="font-bold text-emerald-400">0.0 V</span>
+                </div>
+                <div id="threshold-label" class="mt-2 text-xs text-slate-400 text-right">Voltaje Umbral ($V_{th}$) = 2.0 V</div>
+            </div>
+
+            <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
+                <h3 class="text-sm text-slate-400 uppercase tracking-wide font-bold mb-3">Corriente de Drenaje ($I_D$)</h3>
+                <div class="flex items-end gap-2">
+                    <span id="id-val" class="text-4xl font-bold text-cyan-400">0.0</span>
+                    <span class="text-cyan-600 font-bold mb-1">mA</span>
+                </div>
+                
+                <div class="w-full bg-slate-900 rounded-full h-2.5 mt-4 border border-slate-700 overflow-hidden">
+                    <div id="id-bar" class="bg-cyan-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div id="desc-box" class="text-sm text-slate-400 space-y-2 border-l-2 border-emerald-500 pl-3">
+                <p>Las cargas <strong class="text-red-400">positivas (+)</strong> en la compuerta atraen electrones.</p>
+                <p>Superado el voltaje umbral, se induce el <strong class="text-emerald-400">canal de inversión</strong> permitiendo la corriente.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('mosfetCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    function resize() {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = 500 * dpr;
+        canvas.height = 400 * dpr;
+        ctx.scale(dpr, dpr);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // --- Estado de la Simulación ---
+    let isEnhancement = true;
+    let V_GS = 0;
+
+    // Parámetros Físicos
+    const V_TH = 2.0;       // Umbral Enriquecimiento
+    const K_ENH = 2.5;      // Constante Enriquecimiento
+    const MAX_I_ENH = K_ENH * Math.pow((5 - V_TH), 2); 
+
+    const V_P = -5.0;       // Pinch-off Empobrecimiento
+    const I_DSS = 20.0;     // Corriente máxima (Vgs=0) Empobrecimiento
+    const MAX_I_DEP = I_DSS;
+
+    // Referencias DOM
+    const slider = document.getElementById('vgs-slider');
+    const vgsVal = document.getElementById('vgs-val');
+    const idVal = document.getElementById('id-val');
+    const idBar = document.getElementById('id-bar');
+    const mainTitle = document.getElementById('main-title');
+    const mainSubtitle = document.getElementById('main-subtitle');
+    const toggleBtn = document.getElementById('toggle-btn');
+    const sliderBg = document.getElementById('slider-bg');
+    const minLabel = document.getElementById('slider-min-label');
+    const maxLabel = document.getElementById('slider-max-label');
+    const thresholdLabel = document.getElementById('threshold-label');
+    const descBox = document.getElementById('desc-box');
+
+    // Geometría
+    const cw = 500, ch = 400;
+    const subX = 40, subY = 160, subW = 420, subH = 200;
+    const oxW = 200, oxH = 15;
+    const oxX = (cw - oxW) / 2, oxY = subY - oxH;
+    const gateW = 200, gateH = 25;
+    const gateX = (cw - gateW) / 2, gateY = oxY - gateH;
+    const termW = 80, termH = 90;
+    const sourceX = oxX - termW, drainX = oxX + oxW, termY = subY;
+    const channelX = oxX, channelY = subY, channelW = oxW;
+
+    class FlowingElectron {
+        constructor() {
+            this.reset(true);
+        }
+        reset(randomStart = false) {
+            this.x = randomStart ? sourceX + Math.random() * channelW : sourceX + 5;
+            this.y = channelY + 2 + Math.random() * 8; 
+            this.speed = 2 + Math.random() * 4;
+            this.wobble = Math.random() * Math.PI * 2;
+        }
+        update(isActive, availableDepth) {
+            if (!isActive) return;
+            this.x += this.speed * (0.3 + availableDepth*0.7); 
+            this.wobble += 0.2;
+            
+            // Empujar partículas hacia arriba si hay estrangulamiento (Empobrecimiento)
+            if (!isEnhancement) {
+                let pinchForce = 1 - availableDepth; // 0 (abierto) a 1 (cerrado)
+                let maxY = channelY + 12 - (pinchForce * 10);
+                if (this.y > maxY) this.y -= 1; // Squeeze upwards
+            }
+            
+            this.y += Math.sin(this.wobble) * 0.3;
+
+            // Limitar Y al canal
+            if (this.y < channelY + 2) this.y = channelY + 2;
+            if (this.y > channelY + 12) this.y = channelY + 12;
+
+            if (this.x > drainX + termW - 20) this.reset();
+        }
+        draw(ctx, isActive) {
+            if (!isActive) return;
+            ctx.fillStyle = '#22d3ee';
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = '#22d3ee';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    class SubstrateElectron {
+        constructor() {
+            this.baseX = channelX + 10 + Math.random() * (channelW - 20);
+            this.baseY = subY + 40 + Math.random() * (subH - 60);
+            this.currentY = this.baseY;
+            this.targetY = channelY + 2 + Math.random() * 10;
+        }
+        update(forceRatio) {
+            let targetPos = isEnhancement 
+                ? this.baseY - (this.baseY - this.targetY) * forceRatio // Suben al canal
+                : this.baseY + (forceRatio * 40); // Bajan huyendo del canal
+            this.currentY += (targetPos - this.currentY) * 0.1; 
+        }
+        draw(ctx) {
+            ctx.fillStyle = '#60a5fa';
+            ctx.beginPath();
+            ctx.arc(this.baseX, this.currentY, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    let flowParticles = Array.from({length: 120}, () => new FlowingElectron());
+    let subParticles = Array.from({length: 70}, () => new SubstrateElectron());
+
+    slider.addEventListener('input', (e) => {
+        V_GS = parseFloat(e.target.value);
+    });
+
+    function toggleMode() {
+        isEnhancement = !isEnhancement;
+        V_GS = 0; // Reset voltaje
+        
+        if (isEnhancement) {
+            mainTitle.textContent = "MOSFET: Enriquecimiento";
+            mainTitle.className = "text-2xl font-bold text-emerald-400";
+            mainSubtitle.textContent = "Modo de acumulación (Normalmente Abierto)";
+            toggleBtn.innerHTML = "Cambiar a Empobrecimiento ⭯";
+            
+            slider.min = "0";
+            slider.max = "5";
+            slider.value = "0";
+            sliderBg.className = "slider-container slider-enriquecimiento mb-4";
+            
+            minLabel.textContent = "0V (Corte)";
+            minLabel.className = "text-slate-400";
+            maxLabel.textContent = "5V (Máx)";
+            maxLabel.className = "text-emerald-400";
+            vgsVal.className = "font-bold text-emerald-400";
+            thresholdLabel.textContent = "Voltaje Umbral (Vth) = 2.0 V";
+            
+            descBox.className = "text-sm text-slate-400 space-y-2 border-l-2 border-emerald-500 pl-3";
+            descBox.innerHTML = `
+                <p>Las cargas <strong class="text-red-400">positivas (+)</strong> en la compuerta atraen electrones.</p>
+                <p>Superado el voltaje umbral, se induce el <strong class="text-emerald-400">canal de inversión</strong> permitiendo la corriente.</p>
+            `;
+        } else {
+            mainTitle.textContent = "MOSFET: Empobrecimiento";
+            mainTitle.className = "text-2xl font-bold text-rose-400";
+            mainSubtitle.textContent = "Modo de vaciamiento (Normalmente Cerrado)";
+            toggleBtn.innerHTML = "Cambiar a Enriquecimiento ⭯";
+            
+            slider.min = "-5";
+            slider.max = "0";
+            slider.value = "0";
+            sliderBg.className = "slider-container slider-empobrecimiento mb-4";
+            
+            minLabel.textContent = "-5V (Corte)";
+            minLabel.className = "text-rose-400";
+            maxLabel.textContent = "0V (Máx)";
+            maxLabel.className = "text-slate-400";
+            vgsVal.className = "font-bold text-rose-400";
+            thresholdLabel.textContent = "Voltaje de Estrangulamiento (Vp) = -5.0 V";
+            
+            descBox.className = "text-sm text-slate-400 space-y-2 border-l-2 border-rose-500 pl-3";
+            descBox.innerHTML = `
+                <p>El canal N físico <strong>ya existe</strong> de fábrica.</p>
+                <p>Las cargas <strong class="text-blue-400">negativas (-)</strong> en la compuerta repelen electrones, creando una <strong class="text-yellow-300">zona de vaciamiento</strong> que estrangula la corriente.</p>
+            `;
+        }
+        
+        flowParticles.forEach(p => p.reset(true)); // Repartir partículas de nuevo
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, cw, ch);
+
+        let I_D = 0;
+        let forceRatio = 0;
+        let channelDepth = 0;
+        let activeRatio = 0;
+
+        if (isEnhancement) {
+            if (V_GS >= V_TH) I_D = K_ENH * Math.pow((V_GS - V_TH), 2);
+            forceRatio = V_GS / 5;
+            channelDepth = V_GS >= V_TH ? (V_GS - V_TH) / (5 - V_TH) : 0;
+            activeRatio = I_D / MAX_I_ENH;
+        } else {
+            if (V_GS > V_P) I_D = I_DSS * Math.pow((1 - V_GS/V_P), 2);
+            forceRatio = Math.abs(V_GS / V_P); // 0 (0V) a 1 (-5V)
+            channelDepth = 1 - forceRatio;     // 1 (abierto) a 0 (estrangulado)
+            activeRatio = I_D / MAX_I_DEP;
+        }
+
+        vgsVal.textContent = V_GS.toFixed(1) + " V";
+        idVal.textContent = I_D.toFixed(1);
+        idBar.style.width = `${activeRatio * 100}%`;
+
+        // Colores UI
+        if(I_D === 0) {
+            idVal.classList.replace('text-cyan-400', 'text-slate-500');
+            idBar.classList.replace('bg-cyan-500', 'bg-slate-500');
+        } else {
+            idVal.classList.replace('text-slate-500', 'text-cyan-400');
+            idBar.classList.replace('bg-slate-500', 'bg-cyan-500');
+        }
+
+        // 1. Sustrato P
+        ctx.fillStyle = '#3f1d38'; 
+        ctx.fillRect(subX, subY, subW, subH);
+        ctx.strokeStyle = '#881337';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(subX, subY, subW, subH);
+
+        // 2. Canal (Fijo en Empobrecimiento)
+        if (!isEnhancement) {
+            ctx.fillStyle = '#1e3a8a'; // Azul oscuro (N)
+            ctx.fillRect(channelX, channelY, channelW, 15);
+        }
+
+        // 3. Contactos Metálicos
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(sourceX, termY - 15, termW, 15);
+        ctx.fillRect(drainX, termY - 15, termW, 15);
+        ctx.fillStyle = '#475569'; 
+        ctx.fillRect(gateX, gateY, gateW, gateH);
+
+        // 4. Zonas N+
+        ctx.fillStyle = '#1e3a8a';
+        ctx.fillRect(sourceX, termY, termW, termH);
+        ctx.fillRect(drainX, termY, termW, termH);
+        ctx.fillStyle = '#93c5fd';
+        ctx.font = 'bold 20px Inter';
+        ctx.textAlign = 'center';
+        ctx.fillText('N+', sourceX + termW/2, termY + termH/2 + 5);
+        ctx.fillText('N+', drainX + termW/2, termY + termH/2 + 5);
+        
+        ctx.fillStyle = '#fda4af';
+        ctx.fillText('Sustrato P', cw/2, subY + subH - 20);
+
+        // 5. Aislante SiO2
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(oxX, oxY, oxW, oxH);
+
+        // 6. Cargas en la compuerta y Zonas de campo
+        const numCharges = Math.floor(forceRatio * 15);
+        ctx.font = 'bold 18px Inter';
+        
+        if (isEnhancement) {
+            // Cargas Positivas
+            ctx.fillStyle = '#ef4444';
+            for (let i = 0; i < numCharges; i++) {
+                ctx.fillText('+', gateX + (gateW/(numCharges+1))*(i+1), gateY + 18);
+            }
+            // Canal Inducido (Verde)
+            if (channelDepth > 0) {
+                ctx.fillStyle = `rgba(16, 185, 129, ${channelDepth * 0.8})`;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#10b981';
+                ctx.fillRect(channelX, channelY, channelW, 6 + (channelDepth * 8));
+                ctx.shadowBlur = 0;
+            }
+            // Zona atraida (Amarillo tenue)
+            if (V_GS > 0) {
+                ctx.fillStyle = `rgba(253, 224, 71, ${forceRatio * 0.15})`;
+                ctx.beginPath();
+                ctx.moveTo(channelX, subY);
+                ctx.quadraticCurveTo(channelX + channelW/2, subY + 20 + (forceRatio * 40), channelX + channelW, subY);
+                ctx.fill();
+            }
+        } else {
+            // Cargas Negativas
+            ctx.fillStyle = '#3b82f6';
+            for (let i = 0; i < numCharges; i++) {
+                ctx.fillText('-', gateX + (gateW/(numCharges+1))*(i+1), gateY + 18);
+            }
+            // Zona de vaciamiento (Estrangulamiento del canal)
+            if (forceRatio > 0) {
+                ctx.fillStyle = `rgba(253, 224, 71, ${forceRatio * 0.5})`; // Amarillo
+                ctx.beginPath();
+                ctx.moveTo(channelX, subY + 15); // Base del canal
+                // Curva que empuja hacia arriba cerrando el canal
+                ctx.quadraticCurveTo(channelX + channelW/2, (subY + 15) - (forceRatio * 15), channelX + channelW, subY + 15);
+                ctx.lineTo(channelX + channelW, subY + 15 + (forceRatio * 20)); // Expansión en sustrato
+                ctx.lineTo(channelX, subY + 15 + (forceRatio * 20));
+                ctx.fill();
+                
+                // Línea punteada de límite de campo
+                ctx.strokeStyle = 'rgba(253, 224, 71, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(channelX, subY + 15);
+                ctx.quadraticCurveTo(channelX + channelW/2, (subY + 15) - (forceRatio * 15), channelX + channelW, subY + 15);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        // 7. Partículas
+        for(let p of subParticles) {
+            p.update(forceRatio);
+            p.draw(ctx);
+        }
+
+        const activeParticlesCount = Math.floor(activeRatio * flowParticles.length);
+        for(let i = 0; i < flowParticles.length; i++) {
+            if (i < activeParticlesCount && I_D > 0) {
+                flowParticles[i].update(true, channelDepth); 
+                flowParticles[i].draw(ctx, true);
+            }
+        }
+
+        requestAnimationFrame(draw);
+    }
+
+    draw();
+
+</script>
+</body>
+</html>
