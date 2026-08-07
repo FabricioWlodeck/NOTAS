@@ -17,6 +17,7 @@ tags:
 - [x]  Multivibradores
 - [ ] AO - Aplicaciones  (integrador, etc)
 - [ ] FA
+- [ ] Conversores de I-V y V-I
 - [ ] Regulador de Tensión
 
 ## Bibliografía:
@@ -42,8 +43,9 @@ tags:
 5) Amplificadores de Potencia (A, B, AB)
 6) Comparadores de Ventana
 7) Multivibradores 
-8) Conversores
-9) Reguladores en paralelo y serie
+8) Filtros Activos
+9) Conversores
+10) Reguladores en paralelo y serie
 
 ## Temas Recurrentes en el Final Oral:
 [[1.0 - Circuitos con diodos#Rectificadores Filtro C y L|Rectificadores Filtro C y L]]
