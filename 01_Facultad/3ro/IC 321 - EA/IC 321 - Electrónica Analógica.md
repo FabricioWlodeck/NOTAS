@@ -16,7 +16,7 @@ tags:
 	- Describir el principio de funcionamiento de un FET de canal n de empobrecimiento. Agregar bosquejos de la estructura simplificada del dispositivo.
 - [x]  Multivibradores
 - [x] AO - Aplicaciones  (integrador, etc)
-- [ ] FA
+- [x] FA
 - [ ] Conversores de I-V y V-I
 - [ ] Regulador de Tensión
 
