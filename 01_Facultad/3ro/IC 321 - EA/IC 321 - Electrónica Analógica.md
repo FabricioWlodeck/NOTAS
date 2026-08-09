@@ -15,7 +15,7 @@ tags:
 - [x] Transistores FET
 	- Describir el principio de funcionamiento de un FET de canal n de empobrecimiento. Agregar bosquejos de la estructura simplificada del dispositivo.
 - [x]  Multivibradores
-- [ ] AO - Aplicaciones  (integrador, etc)
+- [x] AO - Aplicaciones  (integrador, etc)
 - [ ] FA
 - [ ] Conversores de I-V y V-I
 - [ ] Regulador de Tensión
@@ -31,7 +31,7 @@ tags:
 
 - [x] [[1.0 - Circuitos con diodos]] 
 - [x] [[2.0 - Circuitos con transistores bipolares y unipolares]]
-- [ ] [[3.0 - Circuitos con amplificadores operacionales]]
+- [x] [[3.0 - Circuitos con amplificadores operacionales]]
 - [ ] [[4.0 - Circuitos integrados analógicos y sus aplicaciones]]
 - [ ] [[5.0 - Fuentes de alimentación de corriente continua lineales y conmutadas]]
 
