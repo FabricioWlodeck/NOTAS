@@ -18,7 +18,7 @@ tags:
 - [x] AO - Aplicaciones  (integrador, etc)
 - [x] FA
 - [ ] Conversores de I-V y V-I
-- [ ] Regulador de Tensión
+- [x] Regulador de Tensión
 
 ## Bibliografía:
 - *Electrónica: Teoría de Circuitos y Dispositivos Electrónicos* — R. L. Boylestad — 10a ed. (2009) 
@@ -33,7 +33,7 @@ tags:
 - [x] [[2.0 - Circuitos con transistores bipolares y unipolares]]
 - [x] [[3.0 - Circuitos con amplificadores operacionales]]
 - [ ] [[4.0 - Circuitos integrados analógicos y sus aplicaciones]]
-- [ ] [[5.0 - Fuentes de alimentación de corriente continua lineales y conmutadas]]
+- [x] [[5.0 - Fuentes de alimentación de corriente continua lineales y conmutadas]]
 
 ## Temas Recurrentes en el Filtro:
 1) Rectificadores con filtro C y L
