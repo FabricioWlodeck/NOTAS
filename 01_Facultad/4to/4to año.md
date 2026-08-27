@@ -1,1 +1,1 @@
-- ## [[IC424 - Sistemas de Control y Automatización]]
+- ## [[IC 424 - Sistemas de Control y Automatización]]
