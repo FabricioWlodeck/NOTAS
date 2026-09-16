@@ -51,4 +51,37 @@ tags:
 [[1.0 - Circuitos con diodos#Rectificadores Filtro C y L|Rectificadores Filtro C y L]]
 - Regulares de Tensión Serie y Paralelo
 - Comparadores de ventana
-- 
+
+# Mesa 27/07/26 Filtro
+1) Amp. Potencia clase A
+	- Escriba formulas mas importante (divisor resistivo)
+	- Detallar recta de carga de alterna y continua
+	- Como llegas a la MES?
+2) Filtro Inductivo, explique
+3) Gráfico de potencia disipada por Zener (regulador de temperatura) a determinada temperatura
+	- Que es FP? es la variación que va a sufrir la potencia maxima disipable en $\frac{mW}{°C}$ 
+	- Cuanto va a ser la potencia maxima disipable cuando va a tener 100 °C
+4) Monoestable
+	- Que es ?
+	- Explicar funcionamiento de un ciclo
+5) Filtro Activo pasa bajo de primer orden Inversor y no inversor
+	- Que son cada uno
+	- Diagrama de bloque de ambos
+
+
+# Mesa 10/08/26 Filtro
+1) Explicación y Gráfico de transistor FET de canal "n" de empobrecimiento
+
+2) Gráfico de potencia disipada por Zener (regulador de temperatura) a determinada temperatura
+	- Que es FP? es la variación que va a sufrir la potencia maxima disipable en $\frac{mW}{°C}$ 
+	- Cuanto va a ser la potencia maxima disipable cuando va a tener 100 °C siendo que a 25 C la potencia máxima disipable es $5 W$
+	  
+3) Regular de tensión en paralelo
+	- Cuales son las  condiciones limite
+	- Explicar el estrés eléctrico del controlador
+	  
+4) Nombrar 7 características ideales del AO
+	  
+5) Filtro Activo Elimina banda, realizar gráfico y función de transferencia genérica
+	- Que son cada uno
+	- Diagrama de bloque de ambos
