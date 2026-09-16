@@ -4,7 +4,7 @@ Bienvenido a mi repositorio de notas académicas de la facultad.
 
 ## Estructura de Carpetas
 
-- `01_Facultad/`: Apuntes, guías y material de estudio.
+- `01_Facultad/`: Ap untes, guías y material de estudio.
 
 ## Convenciones de Uso
 
