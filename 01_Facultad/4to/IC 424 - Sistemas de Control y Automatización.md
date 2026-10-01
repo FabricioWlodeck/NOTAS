@@ -19,3 +19,5 @@ Pregunta de parcial: cual es la función de transferencia de lazo abierto y lazo
 - Que significa robustez? que por mas que haya variación paramétrica el sistema en regimen parmente se mantiene estable ante estos cambios.
 - 
 # Plan de la materia:
+
+# TP 1
